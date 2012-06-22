@@ -17,8 +17,12 @@ algorithm is Omid Madani and you can check out the details in:
 Requirements
 ------------
 
-ema.m requires GNU Octave to run. It might run in Matlab as well.
-All python files (including ema.py)  require python 2.7 or above.
+EMA is implemented both in GNU Octave and in python. However, the python 
+version is the recommended one and the other is left just for a comparison
+and because it is a conciser version of the algorithm.
+
+ * for ``ema.py`` (recommended) it is required python 2.7 or above
+ * for ``ema.m`` you need GNU Octave (tested with v3.2.4)
 
 
 Type of supported input files

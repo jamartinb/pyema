@@ -31,9 +31,7 @@ Type of supported input files
  * Greenberg's dataset files (e.g., scientist-17)
  * Encoded Greenberg's dataset file (e.g., scientist-17.sparse). These can be
     generated from those above using greenberg.py. The ema.py module can
-    work with any encoding but these are the ones that have been tested on.
-    I'll include a copy of the *.sparse files used for testing after receiving
-    the green light from Greenberg. 
+    work with any encoding but these are the ones that have been tested on
 
 
 

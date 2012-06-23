@@ -45,8 +45,7 @@ scientist-17.sparse we would execute the following:
 >
 > [ 0.30755712  0.54481547]
 
-This does both: it applies the encoding to the given file(s) and it runs EMA
-over them. This can takes from several seconds to a couple of minutes and it 
+This can takes from several seconds to a couple of minutes and it 
 outputs the R1 and R5 average values over all the given file. For this 
 concrete example:
 
@@ -69,9 +68,11 @@ Execute EMA in GNU Octave
 The octave function (defined in ema.m) requires the dataset already encoded.
 File *.sparse are already the encoded for such purpose. The encoding is:
 
-<true-class> <number-of-nonzero-features> <indexes-of-nonzero-feature-positions>
+``<true-class> <number-of-nonzero-features> <indexes-of-nonzero-feature-positions>``
 
-Every non-zero feature is assumed to be 1.
+For instance, ``1 3 1 2 3`` specifies that the true class is 1, there are 3 
+active features (value of 1) that should serve to predict that class, and these 
+features are at the positions 1, 2 and 3. 
 
 
 Encoding Greenberg's dataset files

@@ -52,7 +52,6 @@ import pstats;
 from scipy.sparse import *;
 import numpy;
 
-from greenberg import FeaturizeGreenberg;
 
 __date__ = "2012";
 __author__ = "José Antonio Martín Baena";
@@ -116,15 +115,58 @@ class Ema(object):
         @type  x: A scipy.sparse matrix with a single row
         @returns: The predicted class
         """
+        ranking = self.predict_rank(x);
+        # Default class when there is none = 0
+        return ranking[0] if ranking else 0;
+
+
+    def predict_rank(self,x):
+        """
+        It returns the classes ranked by their likehood during prediction for features x
+
+        @param x: The array of features
+        @type  x: A scipy.sparse matrix with a single row
+        @returns: A list of predicted classes starting from the most likely
+        """
         if self._W is None:
-            return 0; # Default class when there is none
-        return self._get_s(x).todense().argmax()+1;
+            return []; # Default class when there is none
+
+        if x.shape != (1,self.W.shape[1]):
+            x = self.prepare_x(x);
+
+        s = self._get_s(x);
+        return (s.indices[s.data.argsort()[::-1]]+1).astype(int).tolist();
 
 
     def get_W(self):
         """It returns the current matrix of weights W"""
         return self._W;
     W = property(get_W);
+
+
+    def prepare_x(self, x):
+        """Returns a version of x cropped to the shape of W
+
+        This step is necesary (and automatically called, if needed) by 
+        predict(x) in case x is longer than the previous features seen
+        so far by EMA.
+
+        @param x: The feature vector
+        @type  x: An sparse matrix with (1,N) shape
+        @returns: Another feature vector ready for prediction
+        @rtype  : An sparse matrix with (1,M) shape, where W.shape = (M,_)
+        """
+        len_x = x.shape[1];
+        if self.W is not None and self.W.shape[0] != len_x:
+            length = self.W.shape[0];
+            ff = numpy.where(x.todense() != 0)[1].tolist()[0];
+            ff = [ f for f in ff if f < length ];
+            xx = coo_matrix((numpy.ones(len(ff)),(numpy.zeros(len(ff)),ff)),
+                            shape=(1,length));
+            xx = xx.tocsr();
+        else:
+            xx = x;
+        return xx;
 
 
     def learn(self,x,y):
@@ -238,9 +280,18 @@ class Ema(object):
         return updated;
 
 
-def process_greenbergs(f,limit=None,size=None,encoded=True,write=None):
+
+def process_dataset(dataset,limit=None,size=None,write=None):
     """
-    It applies EMA to a complete Greenberg's file
+    It applies EMA to an encoded file with binary features
+
+    Every entry in dataset must be of the form:
+        (true_class, active_features)
+    where true class is a non-zero natural and active_features are a list of
+    non-zero natural representing the indexes of the active features.
+
+    For instance, the following is a correct example of dataset entry:
+        ( 3, [1, 2, 5])
 
     The returned matrix contains these values per entry:
 
@@ -251,10 +302,9 @@ def process_greenbergs(f,limit=None,size=None,encoded=True,write=None):
 
     @returns: A matrix of results during the prediction and learning process
     @rtype  : [[clss, yp, r1, r5]]
-    @param f: Whatever can be iterated for lines of a Greenberg's file
-    @param limit: Maximum number, of any, of entries to process
+    @param dataset: An iterable over the dataset
+    @param limit: Maximum number of entries to process
     @param size: Initial size for the W matrix of weights
-    @param encoded: Whether the file is an already encoded sparse matrix
     @param write: Stream where to write the results to
     @type  size: (rows, columns)
     """
@@ -264,51 +314,26 @@ def process_greenbergs(f,limit=None,size=None,encoded=True,write=None):
     if size is not None:
         len_x = size[0];
     iter = 0;
-    gen = None;
-    if not encoded:
-        enc = FeaturizeGreenberg();
-        gen = enc.get_encoding(f);
-    else:
-        gen = ( (int(l.split()[0]), map(int,l.split()[2:])) for l in f );
+    gen = dataset;
     for (clss, fs) in gen:
         iter += 1;
         if limit and iter > limit:
             break;
+
         # Encode x
+        # - Trying to minimize the number of times W need to be resized
         m = max(fs);
         len_x = max(m,len_x);
         ff = [f-1 for f in fs];
         x = coo_matrix((numpy.ones(len(fs)),(numpy.zeros(len(fs)),ff)),shape=(1,len_x));
         x = x.tocsr();
-        xx = None;
-        length = -1;
-        if ema.W is not None and ema.W.shape[0] != len_x:
-            length = ema.W.shape[0];
-            ff = [ f for f in ff if f < length ];
-            xx = coo_matrix((numpy.ones(len(ff)),(numpy.zeros(len(ff)),ff)),shape=(1,length));
-            xx = xx.tocsr();
-        else:
-            xx = x;
 
         # Predict
-        yp = 0;
-        r1 = 0.;
-        r5 = 0.;
-        s = None;
-        ss = None;
-        if ema.W is not None:
-            # Likehood values
-            s = ema._get_s(xx);
-            # The predicted classes from best to worse
-            ss = s.indices[s.data.argsort()[::-1]]+1;
-            # Predicted (top) class
-            yp = ss[0].astype(float);    
-
-            # Calculate R1 and R5
-            if clss in ss[0:min(len(ss),5)]:
-                r5 = 1.;
-                if yp == clss:
-                    r1 = 1.;
+        class_ranking = ema.predict_rank(x);
+        yp = class_ranking[0] if class_ranking else 0;
+        r1 = 1. if yp == clss else 0.;
+        r5 = 1. if clss in class_ranking[0:min(len(class_ranking),5)] else 0.;
+        assert r5 >= r1;
 
         # Store results
         entry = [clss, yp, r1, r5];
@@ -329,13 +354,29 @@ def process_greenbergs(f,limit=None,size=None,encoded=True,write=None):
                 raise e;
     
     if __name__ == "__main__":
-        sys.stdout.write("{!s}\n".format(
-                numpy.mean(numpy.array(results)[:,2:],0)));
+        mean = numpy.mean(numpy.array(results)[:,2:],0).tolist();
+        sys.stdout.write("{:g}\t{:g}\n".format(*mean));
 
     return results;
 
 
-        
+
+def file2dataset(f):
+    """\
+    It processes files into datasets understandable by Ema
+
+    Every line in the file should be of the form:
+    <class> <num_features> <index_feature_1> ... <index_feature_n>
+
+    @param f: The file to process into a valid dataset
+    @returns: A generator of (<class>,[<index_feature_i>]) tuples
+    """
+    for line in f:
+        parts = map(int, line.split());
+        yield (parts[0], parts[2:]);
+
+
+
 def main():
     """\
 EMA algorithm
@@ -344,10 +385,6 @@ sssAAAI09_arpa.pdf
 
 It can understand either the following format:
     <class> <num_features> <index_feature_1> ... <index_feature_n>
-
-Alternativelly, it automatically encode files from Greenberg's
-dataset (see 
-http://pages.cpsc.ucalgary.ca/~saul/wiki/pmwiki.php/Resources/DataSets)
 
 It prints the average R1 and R5 measure over all the given files
 
@@ -363,19 +400,12 @@ Execute as a script with '-h' for details
             It can understand either the following format:
                 <class> <num_features> <index_feature_1> ... <index_feature_n>
 
-            Alternativelly, it automatically encode files from Greenberg's
-            dataset (see 
-   http://pages.cpsc.ucalgary.ca/~saul/wiki/pmwiki.php/Resources/DataSets)
-   
             It prints the average R1 and R5 measure over all the given files
    """);
-    parser.add_argument('-g',
-            help="Greenberg's dataset file to process",
-            type=argparse.FileType('r'),
-            nargs="+");
-    parser.add_argument('-f',
+    parser.add_argument('files',
             help="Encoded files to process",
             type=argparse.FileType('r'),
+            metavar="F",
             nargs="+");
     parser.add_argument('-w',
             help="File to write the results to",
@@ -399,35 +429,31 @@ Execute as a script with '-h' for details
 
     if args.o:
         global files;
-        files = args.g;
+        files = args.files;
         cProfile.run('test()','optimisation.stats');
         p = pstats.Stats('optimisation.stats');
         p.strip_dirs().sort_stats('cumulative').print_stats(30);
         #p.strip_dirs().sort_stats('cumulative').print_callers(30,"lil.py");
         exit(0);
 
-    results = [];
-    current_time = time.time();
-    if args.g:
-        for f in args.g:
-            results.extend(process_greenbergs(f,args.l,
-                    encoded=False,write=args.w));
-    if args.f:
-        for f in args.f:
-            results.extend(process_greenbergs(f,args.l,
-                    encoded=True,write=args.w));
-            
-    time_spent = time.time() - current_time;
-    log.info("Time spent: {:f} s.".format(time_spent));
+    else:
+        results = [];
+        current_time = time.time();
+        for f in args.files:
+            results.extend(process_dataset(file2dataset(f),args.l,
+                write=args.w));
+
+        time_spent = time.time() - current_time;
+        log.info("Time spent: {:f} s.".format(time_spent));
 
 
-           
+
 
 def test():
     log.info("Running optimisation tests...");
     global files;
     for f in files:
-        process_greenbergs(f);
+        process_dataset(file2dataset(f));
 
 
 if __name__ == "__main__":

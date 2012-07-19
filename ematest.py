@@ -29,7 +29,7 @@ import logging;
 
 import numpy;
 
-import ema;
+from ema import process_dataset, file2dataset;
 
 log = logging.getLogger('ematest');
 
@@ -40,24 +40,24 @@ class EmaTest(unittest.TestCase):
 
     def test_scientist_17(self):
         with file("scientist-17.sparse",'r') as inp:
-            true_result = numpy.array([ 0.30755712,  0.54481547]);
-            result_matrix = ema.process_greenbergs(inp,encoded=True);
+            true_result = numpy.array([0.3058, 0.544815]);
+            result_matrix = process_dataset(file2dataset(inp));
             result = numpy.mean(numpy.array(result_matrix)[:,2:],0);
             self.assertTrue(numpy.allclose(result, true_result));
 
 
     def test_scientist_4(self):
         with file("scientist-4.sparse",'r') as inp:
-            true_result = numpy.array([ 0.15442645,  0.34457511]);
-            result_matrix = ema.process_greenbergs(inp,encoded=True);
+            true_result = numpy.array([0.154426, 0.344575]);
+            result_matrix = process_dataset(file2dataset(inp));
             result = numpy.mean(numpy.array(result_matrix)[:,2:],0);
             self.assertTrue(numpy.allclose(result, true_result));
 
 
     def test_scientist_36(self):
         with file("scientist-36.sparse",'r') as inp:
-            true_result = numpy.array([ 0.19724618,  0.36645654]);
-            result_matrix = ema.process_greenbergs(inp,encoded=True);
+            true_result = numpy.array([0.197495, 0.370023]);
+            result_matrix = process_dataset(file2dataset(inp));
             result = numpy.mean(numpy.array(result_matrix)[:,2:],0);
             self.assertTrue(numpy.allclose(result, true_result));
 

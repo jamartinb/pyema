@@ -219,11 +219,18 @@ class FeaturizeGreenberg(object):
         """
         tokens = [];
         previous_command = None;
+        command = None;
+        command_line = None;
         try:
             for line in f:
                 if line.startswith('C '):
                     # Generate the current class and previous features
                     command = line[2:].strip();
+                    command_line = line;
+                elif line.startswith('D '):
+                    # Generate the feature of the current directory
+                    tokens.extend(self.encode_pwd(line));
+                    # Yield previous command and current features
                     clss = self.get_class(command);
                     tokens.extend(self.encode_always_active());
                     if log.isEnabledFor(logging.DEBUG):
@@ -234,12 +241,9 @@ class FeaturizeGreenberg(object):
                     # Include the command before last
                     tokens.extend(self.encode_previous_command(previous_command));
                     # Save the last one for the next time
-                    previous_command = line;
+                    previous_command = command_line;
                     # And include the features of the last command
-                    tokens.extend(self.encode_current_command(line));
-                elif line.startswith('D '):
-                    # Generate the feature of the current directory
-                    tokens.extend(self.encode_pwd(line));
+                    tokens.extend(self.encode_current_command(command_line));
                 elif line.startswith('X '):
                     # Encode the error code of the previous command
                     tokens.extend(self.encode_error(line));
@@ -249,7 +253,10 @@ class FeaturizeGreenberg(object):
                     previous_command = None;
                     tokens.extend(self.encode_session_start(line));
         finally:
-            f.close();
+            try:
+                f.close();
+            except AttributeError:
+                pass;
 
 
 

@@ -24,22 +24,32 @@ Tests the python implementation of EMA
 """
 
 
+import os;
 import unittest;
 import logging;
 
 import numpy;
 
-from ema import process_dataset, file2dataset;
+from pyema.ema import process_dataset, file2dataset;
 
 log = logging.getLogger('ematest');
 
+
+def relative_path(relpath):
+    """Return the absolute path correspoding to the given relative one
+
+    @param relpath: Relative path from the folder of this module
+    @return: Abosulte path to relpath
+    """
+    prefix = os.path.dirname(__file__)
+    return os.path.join(prefix,relpath)
 
 
 class EmaTest(unittest.TestCase):
 
 
     def test_scientist_17(self):
-        with file("scientist-17.sparse",'r') as inp:
+        with file(relative_path("scientist-17.sparse"),'r') as inp:
             true_result = numpy.array([0.3058, 0.544815]);
             result_matrix = process_dataset(file2dataset(inp));
             result = numpy.mean(numpy.array(result_matrix)[:,2:],0);
@@ -47,7 +57,7 @@ class EmaTest(unittest.TestCase):
 
 
     def test_scientist_4(self):
-        with file("scientist-4.sparse",'r') as inp:
+        with file(relative_path("scientist-4.sparse"),'r') as inp:
             true_result = numpy.array([0.154426, 0.344575]);
             result_matrix = process_dataset(file2dataset(inp));
             result = numpy.mean(numpy.array(result_matrix)[:,2:],0);
@@ -55,7 +65,7 @@ class EmaTest(unittest.TestCase):
 
 
     def test_scientist_36(self):
-        with file("scientist-36.sparse",'r') as inp:
+        with file(relative_path("scientist-36.sparse"),'r') as inp:
             true_result = numpy.array([0.197495, 0.370023]);
             result_matrix = process_dataset(file2dataset(inp));
             result = numpy.mean(numpy.array(result_matrix)[:,2:],0);

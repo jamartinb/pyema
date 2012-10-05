@@ -281,7 +281,7 @@ class Ema(object):
 
 
 
-def process_dataset(dataset,limit=None,size=None,write=None):
+def process_dataset(dataset,limit=None,size=None,write=None,stdout=None):
     """
     It applies EMA to an encoded file with binary features
 
@@ -353,9 +353,9 @@ def process_dataset(dataset,limit=None,size=None,write=None):
                 log.error("Error writting this entry: {!r}".format(entry));
                 raise e;
     
-    if __name__ == "__main__":
+    if stdout is not None:
         mean = numpy.mean(numpy.array(results)[:,2:],0).tolist();
-        sys.stdout.write("{:g}\t{:g}\n".format(*mean));
+        stdout.write("{:g}\t{:g}\n".format(*mean));
 
     return results;
 
@@ -441,7 +441,7 @@ Execute as a script with '-h' for details
         current_time = time.time();
         for f in args.files:
             results.extend(process_dataset(file2dataset(f),args.l,
-                write=args.w));
+                write=args.w,stdout=sys.stdout));
 
         time_spent = time.time() - current_time;
         log.info("Time spent: {:f} s.".format(time_spent));

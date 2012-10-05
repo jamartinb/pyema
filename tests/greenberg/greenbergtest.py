@@ -9,7 +9,7 @@ Tests the Greenberg's dataset featurization
 import unittest;
 import logging;
 
-from greenberg import FeaturizeGreenberg;
+from greenberg.greenberg import FeaturizeGreenberg;
 
 log = logging.getLogger('greenbergtest');
 

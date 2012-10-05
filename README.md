@@ -1,4 +1,4 @@
-PyEMA
+PyEMA [![Build Status](https://secure.travis-ci.org/jamartinb/pyema.png)](http://travis-ci.org/jamartinb/pyema)
 =====
 
 Introduction
@@ -21,8 +21,26 @@ EMA is implemented both in GNU Octave and in python. However, the python
 version is the recommended one and the other is left just for a comparison
 and because it is a conciser version of the algorithm.
 
- * for ``ema.py`` (recommended) it is required python 2.7 or above
+ * for ``ema.py`` (recommended)
+  - it is required python 2.7
+  - scipy (>= 0.9) (scipy.sparse, specifically)
  * for ``ema.m`` you need GNU Octave (tested with v3.2.4)
+
+
+Install
+-------
+
+First you can test that everything works as expected by executing:
+
+    > python2.7 ./setup.py test
+
+If everything goes fine, you can install everything with:
+
+    > python2.7 ./setup.py install
+
+The setup script allows plenty other options. For help, please consult:
+
+    > python2.7 ./setup.py -h
 
 
 Type of supported input files

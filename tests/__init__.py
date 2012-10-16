@@ -18,6 +18,12 @@
 __all__ = ["greenberg","pyema"]
 
 
+def get_module(module_name):
+    m = __import__(module_name,globals(),locals())
+    for name in module_name.split('.')[1:]:
+        m = getattr(m,name)
+    return m
+
 
 def test_all():
     import os
@@ -64,17 +70,15 @@ def test_all():
             except Exception:
                 try:
                     # Try to load from module
-                    mod = __import__(t, globals(), locals())
+                    mod = get_module(t)
                     suite.addTest(unittest.defaultTestLoader.loadTestsFromModule(mod))
                 except Exception as e:
                     # Check what went wrong
                     # Let's show the content of the module
                     module_content = "UNKNOWN"
                     try:
-                        mod = __import__('.'.join(t.split('.')[:-1]),
-                                         globals(), locals())
-                        module_content = getattr(
-                                         getattr(mod,t.split('.')[-2]),'__all__')
+                        mod = get_module('.'.join(t.split('.')[:-1]))
+                        module_content = getattr(mod,'__all__')
                     except:
                         pass
 

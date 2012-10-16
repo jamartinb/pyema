@@ -1,1 +1,1 @@
-scipy
+scipy>=0.9

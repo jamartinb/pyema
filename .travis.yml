@@ -7,4 +7,7 @@ install:
     - sudo apt-get install python-setuptools
     - python setup.py build
     - python setup.py install
-script: python setup.py test
+script: 
+    python -m unittest -v tests.test_all
+    # This was not possible due to scipy dependencies
+    # python setup.py test

@@ -2,16 +2,12 @@ language: python
 python:
     - "2.7"
 virtualenv:
+    # Use the libraries installed via apt-get
     # See https://groups.google.com/forum/?fromgroups=#!topic/travis-ci/GItMjyExDPY
     system_site_packages: true
 install:
+    ## The following is a dependency of python-scipy
     #- sudo apt-get install python-numpy
     - sudo apt-get install python-scipy
-    # These are required because, otherwise, I cannot access python-scipy :-(
-    #- sudo apt-get install python-setuptools
-    #- python setup.py build
-    #- python setup.py install
 script: 
     python setup.py test
-    # python -m unittest -v tests.test_all
-    # This was not possible due to scipy dependencies

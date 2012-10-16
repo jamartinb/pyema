@@ -28,6 +28,7 @@ def get_module(module_name):
 def test_all():
     import os
     import unittest
+    import sys
     # Get the current folder
     here = os.path.dirname(__file__)
 
@@ -82,8 +83,12 @@ def test_all():
                     except:
                         pass
 
-                    raise Exception("Couldn't load test module: "+repr(t),
-                                    module_content, e)
+                    raise Exception(("Couldn't load test module: {!r}; "+\
+                            "Module content: {!r}; "+\
+                            "Sys path: {!r}; "+\
+                            "Test modules: {!r}").format(
+                                t, module_content, sys.path, testmodules),
+                            e)
 
     return suite
 

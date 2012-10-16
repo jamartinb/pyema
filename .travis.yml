@@ -2,7 +2,7 @@ language: python
 python:
     - "2.7"
 install:
-    - sude apt-get install python-numpy
+    - sudo apt-get install python-numpy
     - sudo apt-get install python-scipy
     # These are required because, otherwise, I cannot access python-scipy :-(
     #- sudo apt-get install python-setuptools

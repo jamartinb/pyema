@@ -59,20 +59,27 @@ def test_all():
             # else, just load all the test cases from the module.
             # It only allows the "dotted" name
             try:
+                # Try to load from name
                 suite.addTest(unittest.defaultTestLoader.loadTestsFromName(t))
-            except Exception as e:
-                # Let's show the content of the module
-                module_content = "UNKNOWN"
+            except Exception:
                 try:
-                    mod = __import__('.'.join(t.split('.')[:-1]),
-                                     globals(), locals())
-                    module_content = getattr(
-                                     getattr(mod,t.split('.')[-2]),'__all__')
-                except:
-                    pass
+                    # Try to load from module
+                    mod = __import__(t, globals(), locals())
+                    suite.addTest(unittest.defaultTestLoader.loadTestsFromModule(mod))
+                except Exception as e:
+                    # Check what went wrong
+                    # Let's show the content of the module
+                    module_content = "UNKNOWN"
+                    try:
+                        mod = __import__('.'.join(t.split('.')[:-1]),
+                                         globals(), locals())
+                        module_content = getattr(
+                                         getattr(mod,t.split('.')[-2]),'__all__')
+                    except:
+                        pass
 
-                raise Exception("Couldn't load test module: "+repr(t),
-                                module_content, e)
+                    raise Exception("Couldn't load test module: "+repr(t),
+                                    module_content, e)
 
     return suite
 

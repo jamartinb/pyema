@@ -61,7 +61,18 @@ def test_all():
             try:
                 suite.addTest(unittest.defaultTestLoader.loadTestsFromName(t))
             except Exception as e:
-                raise Exception("Couldn't load test module: "+repr(t),e)
+                # Let's show the content of the module
+                module_content = "UNKNOWN"
+                try:
+                    mod = __import__('.'.join(t.split('.')[:-1]),
+                                     globals(), locals())
+                    module_content = getattr(
+                                     getattr(mod,t.split('.')[-2]),'__all__')
+                except:
+                    pass
+
+                raise Exception("Couldn't load test module: "+repr(t),
+                                module_content, e)
 
     return suite
 

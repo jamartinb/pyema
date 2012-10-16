@@ -1,8 +1,11 @@
 language: python
 python:
     - "2.7"
+virtualenv:
+    # See https://groups.google.com/forum/?fromgroups=#!topic/travis-ci/GItMjyExDPY
+    system_site_packages: true
 install:
-    - sudo apt-get install python-numpy
+    #- sudo apt-get install python-numpy
     - sudo apt-get install python-scipy
     # These are required because, otherwise, I cannot access python-scipy :-(
     #- sudo apt-get install python-setuptools

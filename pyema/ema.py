@@ -27,7 +27,7 @@ multiclass classifier which works with a sparse matrix of weights. It is
 particularly suitable for non-stationary problems. The author of EMA's
 algorithm is Omid Madani and you can check out the details in:
 
- * Omid Madani, Hung Bui and Eric Yeh. "Prediction and Discovery of Users’ 
+ * Omid Madani, Hung Bui and Eric Yeh. "Prediction and Discovery of Users’
      Desktop Behavior". Proc. of AAAI'09. 2009. Available at
      http://www.ai.sri.com/pubs/files/1774.pdf
 """
@@ -66,10 +66,11 @@ LOG = logging.getLogger("ema")
 """Auxiliary var used for optimisation tests"""
 files = None
 
+
 class Ema(object):
     """
     Python implementation of EMA
-    
+
     Nomenclature:
      x - The array of features of the new event to train on
      y - The index+1 (y > 0) of the true class for x
@@ -80,7 +81,7 @@ class Ema(object):
     """
 
 
-    def __init__(self, size = None, b = .15, d = .15, w = .01, W = None):
+    def __init__(self, size=None, b=.15, d=.15, w=.01, W=None):
         """
         It instantiates EMA
 
@@ -106,7 +107,7 @@ class Ema(object):
     def _get_s(self, x):
         if self._W is None:
             return lil_matrix((1, 1))
-        return x*self._W
+        return x * self._W
 
 
     def predict(self, x):
@@ -124,20 +125,20 @@ class Ema(object):
 
     def predict_rank(self, x):
         """
-        It returns the classes ranked by their likehood during prediction for features x
+        It returns the classes ranked by their likehood predicted by features x
 
         @param x: The array of features
         @type  x: A scipy.sparse matrix with a single row
         @returns: A list of predicted classes starting from the most likely
         """
         if self._W is None:
-            return [] # Default class when there is none
+            return []  # Default class when there is none
 
         if x.shape != (1, self.W.shape[1]):
             x = self.prepare_x(x)
 
         s = self._get_s(x)
-        return (s.indices[s.data.argsort()[::-1]]+1).astype(int).tolist()
+        return (s.indices[s.data.argsort()[::-1]] + 1).astype(int).tolist()
 
 
     def get_W(self):
@@ -149,7 +150,7 @@ class Ema(object):
     def prepare_x(self, x):
         """Returns a version of x cropped to the shape of W
 
-        This step is necesary (and automatically called, if needed) by 
+        This step is necesary (and automatically called, if needed) by
         predict(x) in case x is longer than the previous features seen
         so far by EMA.
 
@@ -162,9 +163,9 @@ class Ema(object):
         if self.W is not None and self.W.shape[0] != len_x:
             length = self.W.shape[0]
             ff = numpy.where(x.todense() != 0)[1].tolist()[0]
-            ff = [ f for f in ff if f < length ]
+            ff = [f for f in ff if f < length]
             xx = coo_matrix((numpy.ones(len(ff)), (numpy.zeros(len(ff)), ff)),
-                            shape = (1, length))
+                            shape=(1, length))
             xx = xx.tocsr()
         else:
             xx = x
@@ -213,12 +214,12 @@ class Ema(object):
             x = x.tocsr()
 
             # 1. Score
-            s = (x*W).todense()
-            sy = s[0, y-1]
-            
+            s = (x * W).todense()
+            sy = s[0, y - 1]
+
             # 2. Compute margin
             # 2.a Compute scp
-            s[0, y-1] = 0
+            s[0, y - 1] = 0
             scp = s.sum()
 
             # 2.c Compute margin
@@ -246,20 +247,20 @@ class Ema(object):
             #for i in range(len(f)):
             #    diag[f[i]] = x2d[i]
             #prod = spdiags(diag, [0], W.shape[0], W.shape[0])
-            # 
+            #
             #W = prod*W
 
             for i in xrange(len(f)):
                 j = f[i]
-                W.data[W.indptr[j]:W.indptr[j+1]] *= x2d[i]
+                W.data[W.indptr[j]:W.indptr[j + 1]] *= x2d[i]
 
             # 3.2 Boost true class
             #for i in f:
             #    W[i, y-1] += x[0, i]*self._b
             tmp = x.tocoo()
             row = tmp.col
-            col = [y-1]*len(f)
-            B = coo_matrix((tmp.data, (row, col)), shape = W.shape)
+            col = [y - 1] * len(f)
+            B = coo_matrix((tmp.data, (row, col)), shape=W.shape)
             B = B.tocsr()
             W = B + W
 
@@ -283,7 +284,7 @@ class Ema(object):
 
 
 
-def process_dataset(dataset, limit = None, size = None, write = None, stdout = None):
+def process_dataset(dataset, limit=None, size=None, write=None, stdout=None):
     """
     It applies EMA to an encoded file with binary features
 
@@ -311,7 +312,7 @@ def process_dataset(dataset, limit = None, size = None, write = None, stdout = N
     @type  size: (rows, columns)
     """
     results = []
-    ema = Ema(size = size)
+    ema = Ema(size=size)
     len_x = 0
     if size is not None:
         len_x = size[0]
@@ -326,9 +327,9 @@ def process_dataset(dataset, limit = None, size = None, write = None, stdout = N
         # - Trying to minimize the number of times W need to be resized
         m = max(fs)
         len_x = max(m, len_x)
-        ff = [f-1 for f in fs]
-        x = coo_matrix((numpy.ones(len(fs)), (numpy.zeros(len(fs)), ff)), 
-                       shape = (1, len_x))
+        ff = [f - 1 for f in fs]
+        x = coo_matrix((numpy.ones(len(fs)), (numpy.zeros(len(fs)), ff)),
+                       shape=(1, len_x))
         x = x.tocsr()
 
         # Predict
@@ -355,7 +356,7 @@ def process_dataset(dataset, limit = None, size = None, write = None, stdout = N
             except ValueError as e:
                 LOG.error("Error writting this entry: {!r}".format(entry))
                 raise e
-    
+
     if stdout is not None:
         mean = numpy.mean(numpy.array(results)[:, 2:], 0).tolist()
         stdout.write("{:g}\t{:g}\n".format(*mean))
@@ -393,9 +394,9 @@ It prints the average R1 and R5 measure over all the given files
 
 Execute as a script with '-h' for details
    """
-    logging.basicConfig(level = logging.INFO)
+    logging.basicConfig(level=logging.INFO)
 
-    parser = argparse.ArgumentParser(description = """\
+    parser = argparse.ArgumentParser(description="""\
             EMA algorithm
             (see http://www.cs.pitt.edu/~jacklange/teaching/cs3510-s12/\
                     papers/sssAAAI09_arpa.pdf
@@ -406,27 +407,27 @@ Execute as a script with '-h' for details
             It prints the average R1 and R5 measure over all the given files
    """)
     parser.add_argument('files',
-            help = "Encoded files to process",
-            type = argparse.FileType('r'),
-            metavar = "F",
-            nargs = "+")
+            help="Encoded files to process",
+            type=argparse.FileType('r'),
+            metavar="F",
+            nargs="+")
     parser.add_argument('-w',
-            help = "File to write the results to",
-            type = argparse.FileType('w'))
+            help="File to write the results to",
+            type=argparse.FileType('w'))
     parser.add_argument('-l',
-            help = "Iteration limit",
-            type = int)
+            help="Iteration limit",
+            type=int)
     parser.add_argument('-d',
-            help = "Debug mode",
-            action = 'store_true')
+            help="Debug mode",
+            action='store_true')
     parser.add_argument('-o',
-            help = "Optimisation stats",
-            action = 'store_true')
+            help="Optimisation stats",
+            action='store_true')
 
     args = parser.parse_args()
 
     if args.d:
-        logging.basicConfig(level = logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig()
 
@@ -444,7 +445,7 @@ Execute as a script with '-h' for details
         current_time = time.time()
         for f in args.files:
             results.extend(process_dataset(file2dataset(f), args.l,
-                write = args.w, stdout = sys.stdout))
+                write=args.w, stdout=sys.stdout))
 
         time_spent = time.time() - current_time
         LOG.info("Time spent: {:f} s.".format(time_spent))
@@ -461,4 +462,3 @@ def test():
 
 if __name__ == "__main__":
     main()
-

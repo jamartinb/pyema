@@ -24,7 +24,7 @@ Python implementation of EMA
 
 Ema is a supervised-learning algorithm. Concretely, it is an efficient online
 multiclass classifier which works with a sparse matrix of weights. It is
-particularly suitable for non-stationary problems. The author of EMA's 
+particularly suitable for non-stationary problems. The author of EMA's
 algorithm is Omid Madani and you can check out the details in:
 
  * Omid Madani, Hung Bui and Eric Yeh. "Prediction and Discovery of Users’ 
@@ -32,37 +32,39 @@ algorithm is Omid Madani and you can check out the details in:
      http://www.ai.sri.com/pubs/files/1774.pdf
 """
 
-import logging;
-import time;
-import sys;
+import logging
+import time
+import sys
 
 try:
     # For the main function
-    import argparse;
+    import argparse
 except ImportError:
     if sys.hexversion < 0x02070000:
-        print "This program (ema.py) only works with python 2.7 or above.";
-        sys.exit(7);
+        print "This program (ema.py) only works with python 2.7 or above."
+        sys.exit(7)
     else:
-        raise;
+        raise
 
-import cProfile;
-import pstats;
+import cProfile
+import pstats
 
-from scipy.sparse import *;
-import numpy;
+from scipy.sparse import coo_matrix, lil_matrix, csr_matrix
+import numpy
 
 
-__date__ = "2012";
-__author__ = "José Antonio Martín Baena";
-__email__ = "jose.antonio.martin.baena@gmail.com";
-__version__ = "0.1";    
-__copyright__ = "Copyright 2012, José Antonio Martín Baena";
-__credits__ = ["Omid Madani","Eric Yeh"];
-__license__ = "GPLv3 and above";
+__date__ = "2012"
+__author__ = "José Antonio Martín Baena"
+__email__ = "jose.antonio.martin.baena@gmail.com"
+__version__ = "0.1"
+__copyright__ = "Copyright 2012, José Antonio Martín Baena"
+__credits__ = ["Omid Madani", "Eric Yeh"]
+__license__ = "GPLv3 and above"
 
-log = logging.getLogger("ema");
+LOG = logging.getLogger("ema")
 
+"""Auxiliary var used for optimisation tests"""
+files = None
 
 class Ema(object):
     """
@@ -78,7 +80,7 @@ class Ema(object):
     """
 
 
-    def __init__(self,size=None,b=.15,d=.15,w=.01,W=None):
+    def __init__(self, size = None, b = .15, d = .15, w = .01, W = None):
         """
         It instantiates EMA
 
@@ -89,25 +91,25 @@ class Ema(object):
         @param    w: The threshold for zeroing weights (default = .01)
         @param    W: An initial matrix of weights, superseedes size
         """
-        self._b=b;
-        self._d=d;
-        self._w=w;
+        self._b = b
+        self._d = d
+        self._w = w
         if W is None and size is not None:
-            W = lil_matrix(size);
-        self._W = W;
+            W = lil_matrix(size)
+        self._W = W
 
 
     def _gen_default_W(self):
-        self._W = lil_matrix((1,1));
+        self._W = lil_matrix((1, 1))
 
 
-    def _get_s(self,x):
+    def _get_s(self, x):
         if self._W is None:
-            return lil_matrix((1,1));
-        return x*self._W;
+            return lil_matrix((1, 1))
+        return x*self._W
 
 
-    def predict(self,x):
+    def predict(self, x):
         """
         It returns the predicted class for features x
 
@@ -115,12 +117,12 @@ class Ema(object):
         @type  x: A scipy.sparse matrix with a single row
         @returns: The predicted class
         """
-        ranking = self.predict_rank(x);
+        ranking = self.predict_rank(x)
         # Default class when there is none = 0
-        return ranking[0] if ranking else 0;
+        return ranking[0] if ranking else 0
 
 
-    def predict_rank(self,x):
+    def predict_rank(self, x):
         """
         It returns the classes ranked by their likehood during prediction for features x
 
@@ -129,19 +131,19 @@ class Ema(object):
         @returns: A list of predicted classes starting from the most likely
         """
         if self._W is None:
-            return []; # Default class when there is none
+            return [] # Default class when there is none
 
-        if x.shape != (1,self.W.shape[1]):
-            x = self.prepare_x(x);
+        if x.shape != (1, self.W.shape[1]):
+            x = self.prepare_x(x)
 
-        s = self._get_s(x);
-        return (s.indices[s.data.argsort()[::-1]]+1).astype(int).tolist();
+        s = self._get_s(x)
+        return (s.indices[s.data.argsort()[::-1]]+1).astype(int).tolist()
 
 
     def get_W(self):
         """It returns the current matrix of weights W"""
-        return self._W;
-    W = property(get_W);
+        return self._W
+    W = property(get_W)
 
 
     def prepare_x(self, x):
@@ -152,24 +154,24 @@ class Ema(object):
         so far by EMA.
 
         @param x: The feature vector
-        @type  x: An sparse matrix with (1,N) shape
+        @type  x: An sparse matrix with (1, N) shape
         @returns: Another feature vector ready for prediction
-        @rtype  : An sparse matrix with (1,M) shape, where W.shape = (M,_)
+        @rtype  : An sparse matrix with (1, M) shape, where W.shape = (M, _)
         """
-        len_x = x.shape[1];
+        len_x = x.shape[1]
         if self.W is not None and self.W.shape[0] != len_x:
-            length = self.W.shape[0];
-            ff = numpy.where(x.todense() != 0)[1].tolist()[0];
-            ff = [ f for f in ff if f < length ];
-            xx = coo_matrix((numpy.ones(len(ff)),(numpy.zeros(len(ff)),ff)),
-                            shape=(1,length));
-            xx = xx.tocsr();
+            length = self.W.shape[0]
+            ff = numpy.where(x.todense() != 0)[1].tolist()[0]
+            ff = [ f for f in ff if f < length ]
+            xx = coo_matrix((numpy.ones(len(ff)), (numpy.zeros(len(ff)), ff)),
+                            shape = (1, length))
+            xx = xx.tocsr()
         else:
-            xx = x;
-        return xx;
+            xx = x
+        return xx
 
 
-    def learn(self,x,y):
+    def learn(self, x, y):
         """
         It runs a single learning iteration of EMA
 
@@ -178,110 +180,110 @@ class Ema(object):
         @param y: The true class of the given features
         @type  y: A non-zero natural number
         """
-        first_time = False;
+        first_time = False
         if self._W is None:
-            self._gen_default_W();
-            first_time = True;
-        W = self._W;
-        size = W.shape;
-        nrow, ncol = size;
-        updated = False;
+            self._gen_default_W()
+            first_time = True
+        W = self._W
+        size = W.shape
+        nrow, ncol = size
+        updated = False
 
         # 0. Increase the shape of W to x and y
         if x.shape[1] > size[0]:
-            nrow = x.shape[1];
+            nrow = x.shape[1]
         if y > size[1]:
-            ncol = y;
+            ncol = y
         if (nrow, ncol) != size:
-            log.debug("Resizing W to {!r}".format((nrow,ncol)));
-            if isinstance(W,csr_matrix):
-                W.eliminate_zeros();
-            aux = W.tocoo();
-            N = coo_matrix((aux.data,(aux.row,aux.col)),(nrow,ncol));
-            W = N.tocsr();
-            self._W = W;
+            LOG.debug("Resizing W to {!r}".format((nrow, ncol)))
+            if isinstance(W, csr_matrix):
+                W.eliminate_zeros()
+            aux = W.tocoo()
+            N = coo_matrix((aux.data, (aux.row, aux.col)), (nrow, ncol))
+            W = N.tocsr()
+            self._W = W
 
-        s = 0.;
-        scp = 0.;
-        sy = 0.;
-        dx = 0.;
+        s = 0.
+        scp = 0.
+        sy = 0.
+        dx = 0.
         if not first_time:
             # i.e., if we know anything at all to predict
 
-            x = x.tocsr();
+            x = x.tocsr()
 
             # 1. Score
-            s = (x*W).todense();
-            sy = s[0,y-1];
+            s = (x*W).todense()
+            sy = s[0, y-1]
             
             # 2. Compute margin
             # 2.a Compute scp
-            s[0,y-1]=0;
-            scp = s.sum();
+            s[0, y-1] = 0
+            scp = s.sum()
 
             # 2.c Compute margin
-            dx = sy - scp;
+            dx = sy - scp
 
 
         # 3. Update if margin is not met
         if (dx < self._d):
-            updated = True;
+            updated = True
 
             # 3.1 Decay active features
-            f = x.nonzero()[1];
-            x2 = None;
-            if isinstance(x,csr_matrix):
-                x2 = x.copy();
+            f = x.nonzero()[1]
+            x2 = None
+            if isinstance(x, csr_matrix):
+                x2 = x.copy()
             else:
-                x2 = x.tocsr();
+                x2 = x.tocsr()
             # It is more efficient to do ops to non-zero elements this way
-            x2d = x2.data;
-            x2d **= 2;
-            x2d *= -self._b;
-            x2d += 1;
+            x2d = x2.data
+            x2d **= 2
+            x2d *= -self._b
+            x2d += 1
 
-            #diag = numpy.ones(W.shape[0]);
+            #diag = numpy.ones(W.shape[0])
             #for i in range(len(f)):
-            #    diag[f[i]] = x2d[i];
-            #prod = spdiags(diag,[0],W.shape[0],W.shape[0]);
+            #    diag[f[i]] = x2d[i]
+            #prod = spdiags(diag, [0], W.shape[0], W.shape[0])
             # 
-            #W = prod*W;
+            #W = prod*W
 
             for i in xrange(len(f)):
-                j = f[i];
-                W.data[W.indptr[j]:W.indptr[j+1]] *= x2d[i];
+                j = f[i]
+                W.data[W.indptr[j]:W.indptr[j+1]] *= x2d[i]
 
             # 3.2 Boost true class
             #for i in f:
-            #    W[i,y-1] += x[0,i]*self._b;
-            tmp = x.tocoo();
-            row = tmp.col;
-            col = [y-1]*len(f);
-            B = coo_matrix((tmp.data, (row, col)),shape=W.shape);
-            B = B.tocsr();
-            W = B + W;
+            #    W[i, y-1] += x[0, i]*self._b
+            tmp = x.tocoo()
+            row = tmp.col
+            col = [y-1]*len(f)
+            B = coo_matrix((tmp.data, (row, col)), shape = W.shape)
+            B = B.tocsr()
+            W = B + W
 
             # 3.3 Drop small wegihts
-            w = self._w;
-            count = 0;
-            data = W.data;
-            sel = data < w;
-            W.data[sel] = 0.;
+            w = self._w
+            count = 0
+            data = W.data
+            sel = data < w
+            W.data[sel] = 0.
             if numpy.any(sel):
-                if log.isEnabledFor(logging.DEBUG):
-                    log.debug("Removing zeros (Count:{};\tnnz:{})".format(
-                            count,W.nnz));
-                #previous = W.nnz;
-                W.eliminate_zeros();
+                if LOG.isEnabledFor(logging.DEBUG):
+                    LOG.debug("Removing zeros (Count:{};\tnnz:{})".format(
+                            count, W.nnz))
+                #previous = W.nnz
+                W.eliminate_zeros()
                 #if previous == W.nnz:
-                #    log.error("""We couldn't remove internal zeros from \
-                #            the sparse matrix""");
-            self._W = W;
-        return updated;
+                #    LOG.error("""We couldn't remove internal zeros from \
+                #            the sparse matrix""")
+            self._W = W
+        return updated
 
 
 
-def process_dataset(dataset,limit=None,size=None,write=None,stdout=None):
+def process_dataset(dataset, limit = None, size = None, write = None, stdout = None):
     """
     It applies EMA to an encoded file with binary features
 
@@ -308,56 +310,57 @@ def process_dataset(dataset,limit=None,size=None,write=None,stdout=None):
     @param write: Stream where to write the results to
     @type  size: (rows, columns)
     """
-    results = [];
-    ema = Ema(size=size);
-    len_x = 0;
+    results = []
+    ema = Ema(size = size)
+    len_x = 0
     if size is not None:
-        len_x = size[0];
-    iter = 0;
-    gen = dataset;
+        len_x = size[0]
+    iteration = 0
+    gen = dataset
     for (clss, fs) in gen:
-        iter += 1;
-        if limit and iter > limit:
-            break;
+        iteration += 1
+        if limit and iteration > limit:
+            break
 
         # Encode x
         # - Trying to minimize the number of times W need to be resized
-        m = max(fs);
-        len_x = max(m,len_x);
-        ff = [f-1 for f in fs];
-        x = coo_matrix((numpy.ones(len(fs)),(numpy.zeros(len(fs)),ff)),shape=(1,len_x));
-        x = x.tocsr();
+        m = max(fs)
+        len_x = max(m, len_x)
+        ff = [f-1 for f in fs]
+        x = coo_matrix((numpy.ones(len(fs)), (numpy.zeros(len(fs)), ff)), 
+                       shape = (1, len_x))
+        x = x.tocsr()
 
         # Predict
-        class_ranking = ema.predict_rank(x);
-        yp = class_ranking[0] if class_ranking else 0;
-        r1 = 1. if yp == clss else 0.;
-        r5 = 1. if clss in class_ranking[0:min(len(class_ranking),5)] else 0.;
-        assert r5 >= r1;
+        class_ranking = ema.predict_rank(x)
+        yp = class_ranking[0] if class_ranking else 0
+        r1 = 1. if yp == clss else 0.
+        r5 = 1. if clss in class_ranking[0:min(len(class_ranking), 5)] else 0.
+        assert r5 >= r1
 
         # Store results
-        entry = [clss, yp, r1, r5];
-        if log.isEnabledFor(logging.DEBUG):
-            log.debug("True class:{:d};\tPred. class:{:d}".format(
-                    clss,yp));
-        results.append(entry);
+        entry = [clss, yp, r1, r5]
+        if LOG.isEnabledFor(logging.DEBUG):
+            LOG.debug("True class:{:d};\tPred. class:{:d}".format(
+                    clss, yp))
+        results.append(entry)
 
         # Learn
-        ema.learn(x,clss);
+        ema.learn(x, clss)
 
     if write:
         for entry in results:
             try:
-                write.write(" {:g} {:g} {:g} {:g}\n".format(*entry));
+                write.write(" {:g} {:g} {:g} {:g}\n".format(*entry))
             except ValueError as e:
-                log.error("Error writting this entry: {!r}".format(entry));
-                raise e;
+                LOG.error("Error writting this entry: {!r}".format(entry))
+                raise e
     
     if stdout is not None:
-        mean = numpy.mean(numpy.array(results)[:,2:],0).tolist();
-        stdout.write("{:g}\t{:g}\n".format(*mean));
+        mean = numpy.mean(numpy.array(results)[:, 2:], 0).tolist()
+        stdout.write("{:g}\t{:g}\n".format(*mean))
 
-    return results;
+    return results
 
 
 
@@ -369,11 +372,11 @@ def file2dataset(f):
     <class> <num_features> <index_feature_1> ... <index_feature_n>
 
     @param f: The file to process into a valid dataset
-    @returns: A generator of (<class>,[<index_feature_i>]) tuples
+    @returns: A generator of (<class>, [<index_feature_i>]) tuples
     """
     for line in f:
-        parts = map(int, line.split());
-        yield (parts[0], parts[2:]);
+        parts = map(int, line.split())
+        yield (parts[0], parts[2:])
 
 
 
@@ -390,9 +393,9 @@ It prints the average R1 and R5 measure over all the given files
 
 Execute as a script with '-h' for details
    """
-    logging.basicConfig(level=logging.INFO);
+    logging.basicConfig(level = logging.INFO)
 
-    parser = argparse.ArgumentParser(description="""\
+    parser = argparse.ArgumentParser(description = """\
             EMA algorithm
             (see http://www.cs.pitt.edu/~jacklange/teaching/cs3510-s12/\
                     papers/sssAAAI09_arpa.pdf
@@ -401,60 +404,61 @@ Execute as a script with '-h' for details
                 <class> <num_features> <index_feature_1> ... <index_feature_n>
 
             It prints the average R1 and R5 measure over all the given files
-   """);
+   """)
     parser.add_argument('files',
-            help="Encoded files to process",
-            type=argparse.FileType('r'),
-            metavar="F",
-            nargs="+");
+            help = "Encoded files to process",
+            type = argparse.FileType('r'),
+            metavar = "F",
+            nargs = "+")
     parser.add_argument('-w',
-            help="File to write the results to",
-            type=argparse.FileType('w'));
+            help = "File to write the results to",
+            type = argparse.FileType('w'))
     parser.add_argument('-l',
-            help="Iteration limit",
-            type=int);
+            help = "Iteration limit",
+            type = int)
     parser.add_argument('-d',
-            help="Debug mode",
-            action='store_true');
+            help = "Debug mode",
+            action = 'store_true')
     parser.add_argument('-o',
-            help="Optimisation stats",
-            action='store_true');
+            help = "Optimisation stats",
+            action = 'store_true')
 
-    args = parser.parse_args();
+    args = parser.parse_args()
 
     if args.d:
-        logging.basicConfig(level=logging.DEBUG);
+        logging.basicConfig(level = logging.DEBUG)
     else:
-        logging.basicConfig();
+        logging.basicConfig()
 
     if args.o:
-        global files;
-        files = args.files;
-        cProfile.run('test()','optimisation.stats');
-        p = pstats.Stats('optimisation.stats');
-        p.strip_dirs().sort_stats('cumulative').print_stats(30);
-        #p.strip_dirs().sort_stats('cumulative').print_callers(30,"lil.py");
-        exit(0);
+        global files
+        files = args.files
+        cProfile.run('test()', 'optimisation.stats')
+        p = pstats.Stats('optimisation.stats')
+        p.strip_dirs().sort_stats('cumulative').print_stats(30)
+        #p.strip_dirs().sort_stats('cumulative').print_callers(30, "lil.py")
+        exit(0)
 
     else:
-        results = [];
-        current_time = time.time();
+        results = []
+        current_time = time.time()
         for f in args.files:
-            results.extend(process_dataset(file2dataset(f),args.l,
-                write=args.w,stdout=sys.stdout));
+            results.extend(process_dataset(file2dataset(f), args.l,
+                write = args.w, stdout = sys.stdout))
 
-        time_spent = time.time() - current_time;
-        log.info("Time spent: {:f} s.".format(time_spent));
+        time_spent = time.time() - current_time
+        LOG.info("Time spent: {:f} s.".format(time_spent))
 
 
 
 
 def test():
-    log.info("Running optimisation tests...");
-    global files;
+    LOG.info("Running optimisation tests...")
+    global files
     for f in files:
-        process_dataset(file2dataset(f));
+        process_dataset(file2dataset(f))
 
 
 if __name__ == "__main__":
-    main();
+    main()
+
